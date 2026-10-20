@@ -22,48 +22,104 @@ public_users.post("/register", (req,res) => {
   return res.status(200).json({ message: "User successfully registered. Now you can login" });
 });
 
-// Task 1: Get the book list available in the shop
-public_users.get('/',function (req, res) {
-  return res.status(200).send(JSON.stringify(books, null, 4));
-});
+// ---------------------------------------------------------------
+// Promise-based helpers used by the routes below (Task 10)
+// ---------------------------------------------------------------
 
-// Task 2: Get book details based on ISBN
-public_users.get('/isbn/:isbn',function (req, res) {
-  const isbn = req.params.isbn;
-  if (books[isbn]) {
-    return res.status(200).send(JSON.stringify(books[isbn], null, 4));
-  }
-  return res.status(404).json({ message: "Book not found" });
-});
-  
-// Task 3: Get book details based on author
-public_users.get('/author/:author',function (req, res) {
-  const author = req.params.author;
-  const result = {};
-  Object.keys(books).forEach((key) => {
-    if (books[key].author === author) {
-      result[key] = books[key];
+// Returns a Promise that resolves with all books
+const fetchAllBooks = () => {
+  return new Promise((resolve, reject) => {
+    if (books) {
+      resolve(books);
+    } else {
+      reject(new Error("Books not available"));
     }
   });
-  if (Object.keys(result).length > 0) {
-    return res.status(200).send(JSON.stringify(result, null, 4));
-  }
-  return res.status(404).json({ message: "No books found for this author" });
-});
+};
 
-// Task 4: Get all books based on title
-public_users.get('/title/:title',function (req, res) {
-  const title = req.params.title;
-  const result = {};
-  Object.keys(books).forEach((key) => {
-    if (books[key].title === title) {
-      result[key] = books[key];
+// Returns a Promise that resolves with one book by ISBN
+const fetchBookByISBN = (isbn) => {
+  return new Promise((resolve, reject) => {
+    if (books[isbn]) {
+      resolve(books[isbn]);
+    } else {
+      reject(new Error("Book not found"));
     }
   });
-  if (Object.keys(result).length > 0) {
-    return res.status(200).send(JSON.stringify(result, null, 4));
+};
+
+// Returns a Promise that resolves with all books by an author
+const fetchBooksByAuthor = (author) => {
+  return new Promise((resolve, reject) => {
+    const result = {};
+    Object.keys(books).forEach((key) => {
+      if (books[key].author === author) {
+        result[key] = books[key];
+      }
+    });
+    if (Object.keys(result).length > 0) {
+      resolve(result);
+    } else {
+      reject(new Error("No books found for this author"));
+    }
+  });
+};
+
+// Returns a Promise that resolves with all books with a title
+const fetchBooksByTitle = (title) => {
+  return new Promise((resolve, reject) => {
+    const result = {};
+    Object.keys(books).forEach((key) => {
+      if (books[key].title === title) {
+        result[key] = books[key];
+      }
+    });
+    if (Object.keys(result).length > 0) {
+      resolve(result);
+    } else {
+      reject(new Error("No books found with this title"));
+    }
+  });
+};
+
+// Task 1 + Task 10: Get the book list available in the shop (async/await)
+public_users.get('/', async function (req, res) {
+  try {
+    const allBooks = await fetchAllBooks();
+    return res.status(200).send(JSON.stringify(allBooks, null, 4));
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
-  return res.status(404).json({ message: "No books found with this title" });
+});
+
+// Task 2 + Task 10: Get book details based on ISBN (async/await)
+public_users.get('/isbn/:isbn', async function (req, res) {
+  try {
+    const book = await fetchBookByISBN(req.params.isbn);
+    return res.status(200).send(JSON.stringify(book, null, 4));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
+});
+
+// Task 3 + Task 10: Get book details based on author (async/await)
+public_users.get('/author/:author', async function (req, res) {
+  try {
+    const result = await fetchBooksByAuthor(req.params.author);
+    return res.status(200).send(JSON.stringify(result, null, 4));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
+});
+
+// Task 4 + Task 10: Get all books based on title (async/await)
+public_users.get('/title/:title', async function (req, res) {
+  try {
+    const result = await fetchBooksByTitle(req.params.title);
+    return res.status(200).send(JSON.stringify(result, null, 4));
+  } catch (error) {
+    return res.status(404).json({ message: error.message });
+  }
 });
 
 // Task 5: Get book review
@@ -76,10 +132,10 @@ public_users.get('/review/:isbn',function (req, res) {
 });
 
 // ---------------------------------------------------------------
-// Task 10: The same four lookups using Axios with async/await
+// Task 10: Client methods using Axios with async/await
 // ---------------------------------------------------------------
 
-// Method 1: Get all books (async/await with Axios)
+// Method 1: Get all books using Axios (async/await)
 const getAllBooks = async () => {
   try {
     const response = await axios.get(`${BASE_URL}/`);
@@ -90,7 +146,7 @@ const getAllBooks = async () => {
   }
 };
 
-// Method 2: Get book details by ISBN (async/await with Axios)
+// Method 2: Get book details by ISBN using Axios (async/await)
 const getBookByISBN = async (isbn) => {
   try {
     const response = await axios.get(`${BASE_URL}/isbn/${isbn}`);
@@ -101,7 +157,7 @@ const getBookByISBN = async (isbn) => {
   }
 };
 
-// Method 3: Get book details by author (async/await with Axios)
+// Method 3: Get book details by author using Axios (async/await)
 const getBooksByAuthor = async (author) => {
   try {
     const response = await axios.get(`${BASE_URL}/author/${encodeURIComponent(author)}`);
@@ -112,7 +168,7 @@ const getBooksByAuthor = async (author) => {
   }
 };
 
-// Method 4: Get book details by title (async/await with Axios)
+// Method 4: Get book details by title using Axios (async/await)
 const getBooksByTitle = async (title) => {
   try {
     const response = await axios.get(`${BASE_URL}/title/${encodeURIComponent(title)}`);
